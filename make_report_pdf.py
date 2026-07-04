@@ -22,6 +22,10 @@ import markdown as md
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 HOME = os.path.expanduser("~")
 CN_NAME = {"300811.SZ": "铂科新材", "300496.SZ": "中科创达", "002202.SZ": "金风科技",
+           "603078.SS": "江化微", "003022.SZ": "联泓新科", "000938.SZ": "紫光股份",
+           "600487.SS": "亨通光电",
+           "600378.SH": "昊华科技",
+           "002139.SZ": "拓邦股份",
            "SPCX": "SpaceX"}
 
 # AI-internal / process phrases to strip defensively if any slip through.
@@ -105,11 +109,11 @@ def build_html(d: dict) -> str:
     date = d["trade_date"]
     name = CN_NAME.get(ticker, ticker)
     # A-share routing drives the data-source / disclaimer text: A-shares pull from
-    # akshare(东财) + yfinance with 千股千评/资金/政策 proxies, US names are yfinance-only.
-    is_cn = bool(re.match(r"^\d{6}(\.(SZ|SS|BJ))?$", str(ticker).strip(), re.I)) or \
-        str(ticker).upper().endswith((".SZ", ".SS", ".BJ"))
-    src_line = "akshare/东财 + yfinance" if is_cn else "yfinance（美股行情/财报/新闻）"
-    disc_src = "东方财富/akshare 与 yfinance" if is_cn else "yfinance"
+    # A-shares use Tencent/Sina/Eastmoney cross-checks; Yahoo is only a fallback.
+    is_cn = bool(re.match(r"^\d{6}(\.(SZ|SS|SH|BJ))?$", str(ticker).strip(), re.I)) or \
+        str(ticker).upper().endswith((".SZ", ".SS", ".SH", ".BJ"))
+    src_line = "腾讯 / 新浪 / 东方财富（交叉核验）" if is_cn else "yfinance（美股行情/财报/新闻）"
+    disc_src = "腾讯、新浪与东方财富/akshare" if is_cn else "yfinance"
     disc_proxy = "情绪/资金/政策为 A 股代理指标，" if is_cn else ""
     final = d.get("final_trade_decision", "")
     trader = d.get("trader_investment_decision", "")
@@ -161,7 +165,7 @@ def build_html(d: dict) -> str:
   @page {{ size:A4; margin:14mm 14mm 15mm; }}
   *{{ box-sizing:border-box; }}
   :root{{ --navy:#0a2540; --gold:#b8860b; --ink:#1f2328; --line:#d7dce3; --rc:{rcolor}; }}
-  body{{ font-family:"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+  body{{ font-family:"Songti SC","STSong","SimSun",serif;
          color:var(--ink); line-height:1.62; font-size:11.5px; margin:0; }}
   .masthead{{ background:var(--navy); color:#fff; padding:15px 19px; border-radius:5px;
               display:flex; justify-content:space-between; align-items:flex-end; }}

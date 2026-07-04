@@ -29,7 +29,15 @@ from .y_finance import (
     get_YFin_data_online,
 )
 from .yfinance_news import get_global_news_yfinance, get_news_yfinance
-from .akshare_cn import get_global_news_akshare, get_news_akshare
+from .akshare_cn import (
+    get_balance_sheet_akshare,
+    get_cashflow_akshare,
+    get_fundamentals_akshare,
+    get_global_news_akshare,
+    get_income_statement_akshare,
+    get_news_akshare,
+    get_stock_data_akshare,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +105,7 @@ OPTIONAL_CATEGORIES = {"macro_data", "prediction_markets"}
 VENDOR_METHODS = {
     # core_stock_apis
     "get_stock_data": {
+        "akshare": get_stock_data_akshare,
         "alpha_vantage": get_alpha_vantage_stock,
         "yfinance": get_YFin_data_online,
     },
@@ -107,18 +116,22 @@ VENDOR_METHODS = {
     },
     # fundamental_data
     "get_fundamentals": {
+        "akshare": get_fundamentals_akshare,
         "alpha_vantage": get_alpha_vantage_fundamentals,
         "yfinance": get_yfinance_fundamentals,
     },
     "get_balance_sheet": {
+        "akshare": get_balance_sheet_akshare,
         "alpha_vantage": get_alpha_vantage_balance_sheet,
         "yfinance": get_yfinance_balance_sheet,
     },
     "get_cashflow": {
+        "akshare": get_cashflow_akshare,
         "alpha_vantage": get_alpha_vantage_cashflow,
         "yfinance": get_yfinance_cashflow,
     },
     "get_income_statement": {
+        "akshare": get_income_statement_akshare,
         "alpha_vantage": get_alpha_vantage_income_statement,
         "yfinance": get_yfinance_income_statement,
     },

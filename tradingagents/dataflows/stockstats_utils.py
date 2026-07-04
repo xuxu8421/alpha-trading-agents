@@ -8,6 +8,7 @@ import yfinance as yf
 from stockstats import wrap
 from yfinance.exceptions import YFRateLimitError
 
+from .akshare_cn import get_ohlcv_akshare_frame, is_a_share, to_ak_symbol
 from .config import get_config
 from .symbol_utils import NoMarketDataError, normalize_symbol
 from .utils import safe_ticker_component
@@ -129,10 +130,10 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
     subsequent calls the cache is reused. Rows after curr_date are
     filtered out so backtests never see future prices.
     """
-    # Resolve broker/forex symbols (XAUUSD+ -> GC=F) to Yahoo's convention,
-    # then reject values that would escape the cache directory when
-    # interpolated into the cache filename (e.g. ``../../tmp/x``).
-    canonical = normalize_symbol(symbol)
+    # A shares are better served by akshare/Eastmoney. Using yfinance for
+    # 600xxx/300xxx tickers is both slower from China and more prone to Yahoo
+    # rate limits, and this function feeds verification + technical indicators.
+    canonical = to_ak_symbol(symbol) if is_a_share(symbol) else normalize_symbol(symbol)
     safe_symbol = safe_ticker_component(canonical)
 
     config = get_config()
@@ -148,9 +149,10 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
     end_str = (today_date + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
 
     os.makedirs(config["data_cache_dir"], exist_ok=True)
+    vendor_label = "AKShare" if is_a_share(symbol) else "YFin"
     data_file = os.path.join(
         config["data_cache_dir"],
-        f"{safe_symbol}-YFin-data-{start_str}-{end_str}.csv",
+        f"{safe_symbol}-{vendor_label}-data-{start_str}-{end_str}.csv",
     )
 
     # A cached file may be empty if a prior fetch failed (unknown symbol,
@@ -161,6 +163,13 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
         cached = pd.read_csv(data_file, on_bad_lines="skip", encoding="utf-8")
         if not cached.empty and "Close" in cached.columns:
             data = cached
+
+    if data is None and is_a_share(symbol):
+        downloaded = get_ohlcv_akshare_frame(symbol, start_str, end_str)
+        if downloaded.empty or "Close" not in downloaded.columns:
+            raise NoMarketDataError(symbol, canonical, "akshare returned no rows")
+        downloaded.to_csv(data_file, index=False, encoding="utf-8")
+        data = downloaded
 
     if data is None:
         downloaded = yf_retry(lambda: yf.download(

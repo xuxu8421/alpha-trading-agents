@@ -153,6 +153,7 @@ DEFAULT_CONFIG = _apply_env_overrides({
         ".TO":  "^GSPTSE",     # Toronto (TSX Composite)
         ".AX":  "^AXJO",       # Australia (ASX 200)
         ".SS":  "000001.SS",   # Shanghai (SSE Composite)
+        ".SH":  "000001.SS",   # Shanghai alias used by mainland data vendors
         ".SZ":  "399001.SZ",   # Shenzhen (SZSE Component)
         "":     "SPY",         # default for US-listed tickers (no suffix)
     },
