@@ -67,6 +67,12 @@ class Propagator:
             "sentiment_report": "",
             "news_report": "",
             "policy_report": "",
+            "macro_report": "",
+            "industry_report": "",
+            "financial_report": "",
+            "expectation_report": "",
+            "evidence_ledger": "",
+            "position_context": "",
             "final_report": "",
         }
 

@@ -78,7 +78,7 @@ def test_market_phase_detects_positive_breadth():
     phase = _market_phase(rows)
 
     assert phase["score"] > 60
-    assert phase["phase"] in {"修复升温", "情绪主升"}
+    assert phase["phase"] in {"主线强化", "弱修复", "退潮防守", "主线分歧", "结构轮动"}
 
 
 def test_rank_boards_returns_starter_candidates():

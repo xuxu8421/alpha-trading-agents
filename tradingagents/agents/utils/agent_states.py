@@ -60,6 +60,12 @@ class AgentState(MessagesState):
     ]
     fundamentals_report: Annotated[str, "Report from the Fundamentals Researcher"]
     policy_report: Annotated[str, "Report from the A-share Policy & Retail-Discussion Analyst"]
+    macro_report: Annotated[str, "Country-level macro and policy regime report"]
+    industry_report: Annotated[str, "Industry structure, cycle, and peer-position report"]
+    financial_report: Annotated[str, "Professional financial-statement quality report"]
+    expectation_report: Annotated[str, "Macro-industry-company expectation-gap synthesis"]
+    evidence_ledger: Annotated[str, "Traceable evidence and source limitations"]
+    position_context: Annotated[str, "Current holding, cost, and risk-budget context"]
 
     # researcher team discussion step
     investment_debate_state: Annotated[
