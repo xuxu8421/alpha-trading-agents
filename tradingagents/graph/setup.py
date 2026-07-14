@@ -11,6 +11,7 @@ from tradingagents.agents import (
     create_bull_researcher,
     create_conservative_debator,
     create_fundamentals_analyst,
+    create_expectation_analyst,
     create_financial_report_analyst,
     create_industry_analyst,
     create_market_analyst,
@@ -75,6 +76,7 @@ class GraphSetup:
         financial_report_analyst_node = create_financial_report_analyst(
             self.deep_thinking_llm
         )
+        expectation_analyst_node = create_expectation_analyst(self.deep_thinking_llm)
 
         # Create researcher and manager nodes
         bull_researcher_node = create_bull_researcher(self.quick_thinking_llm)
@@ -104,6 +106,7 @@ class GraphSetup:
         workflow.add_node("Policy Analyst", policy_analyst_node)
         workflow.add_node("Industry Analyst", industry_analyst_node)
         workflow.add_node("Financial Report Analyst", financial_report_analyst_node)
+        workflow.add_node("Expectation Analyst", expectation_analyst_node)
         workflow.add_node("Bull Researcher", bull_researcher_node)
         workflow.add_node("Bear Researcher", bear_researcher_node)
         workflow.add_node("Research Manager", research_manager_node)
@@ -140,7 +143,8 @@ class GraphSetup:
             else:
                 workflow.add_edge(current_clear, "Financial Report Analyst")
 
-        workflow.add_edge("Financial Report Analyst", "Bull Researcher")
+        workflow.add_edge("Financial Report Analyst", "Expectation Analyst")
+        workflow.add_edge("Expectation Analyst", "Bull Researcher")
 
         # Add remaining edges
         workflow.add_conditional_edges(

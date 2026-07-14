@@ -1,4 +1,5 @@
 from .analysts.fundamentals_analyst import create_fundamentals_analyst
+from .analysts.expectation_analyst import create_expectation_analyst
 from .analysts.financial_report_analyst import create_financial_report_analyst
 from .analysts.market_analyst import create_market_analyst
 from .analysts.industry_analyst import create_industry_analyst
@@ -29,6 +30,7 @@ __all__ = [
     "create_bull_researcher",
     "create_research_manager",
     "create_fundamentals_analyst",
+    "create_expectation_analyst",
     "create_financial_report_analyst",
     "create_market_analyst",
     "create_industry_analyst",
