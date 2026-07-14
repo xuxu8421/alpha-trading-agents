@@ -20,6 +20,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_language_instruction,
 )
 from tradingagents.dataflows.akshare_cn import fetch_cn_policy, is_a_share
+from tradingagents.dataflows.config import get_config
 
 
 def create_policy_analyst(llm):
@@ -41,6 +42,14 @@ def create_policy_analyst(llm):
             }
 
         data = fetch_cn_policy(ticker)
+        if get_config().get("strict_data_mode") and any(
+            marker in str(data.get("policy_block", ""))
+            for marker in ("获取失败", "DATA_UNAVAILABLE", "Error fetching")
+        ):
+            raise RuntimeError(
+                "Strict data mode rejected incomplete A-share policy packet: "
+                + str(data.get("policy_block", ""))
+            )
         instrument_context = get_instrument_context_from_state(state)
         system_message = _build_policy_system_message(
             ticker=ticker,

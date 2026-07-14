@@ -22,6 +22,7 @@ class Propagator:
         asset_type: str = "stock",
         past_context: str = "",
         instrument_context: str = "",
+        position_context: str = "",
     ) -> dict[str, Any]:
         """Create the initial state for the agent graph.
 
@@ -72,7 +73,7 @@ class Propagator:
             "financial_report": "",
             "expectation_report": "",
             "evidence_ledger": "",
-            "position_context": "",
+            "position_context": position_context,
             "final_report": "",
         }
 

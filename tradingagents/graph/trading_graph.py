@@ -318,7 +318,13 @@ class TradingAgentsGraph:
         identity = resolve_instrument_identity(ticker)
         return build_instrument_context(ticker, asset_type, identity)
 
-    def propagate(self, company_name, trade_date, asset_type: str = "stock"):
+    def propagate(
+        self,
+        company_name,
+        trade_date,
+        asset_type: str = "stock",
+        position_context: str = "",
+    ):
         """Run the trading agents graph for a company on a specific date.
 
         ``asset_type`` selects between the stock pipeline (default) and the
@@ -352,7 +358,12 @@ class TradingAgentsGraph:
                 logger.info("Starting fresh for %s on %s", company_name, trade_date)
 
         try:
-            return self._run_graph(company_name, trade_date, asset_type=asset_type)
+            return self._run_graph(
+                company_name,
+                trade_date,
+                asset_type=asset_type,
+                position_context=position_context,
+            )
         finally:
             if self._checkpointer_ctx is not None:
                 self._checkpointer_ctx.__exit__(None, None, None)
@@ -374,7 +385,13 @@ class TradingAgentsGraph:
             )
         return write_report_tree(final_state, ticker, save_path)
 
-    def _run_graph(self, company_name, trade_date, asset_type: str = "stock"):
+    def _run_graph(
+        self,
+        company_name,
+        trade_date,
+        asset_type: str = "stock",
+        position_context: str = "",
+    ):
         """Execute the graph and write the resulting state to disk and memory log."""
         # Initialize state — inject memory log context for PM and the
         # deterministically resolved instrument identity for all agents.
@@ -386,6 +403,7 @@ class TradingAgentsGraph:
             asset_type=asset_type,
             past_context=past_context,
             instrument_context=instrument_context,
+            position_context=position_context,
         )
         args = self.propagator.get_graph_args()
 
@@ -447,6 +465,13 @@ class TradingAgentsGraph:
             "news_report": final_state["news_report"],
             "fundamentals_report": final_state["fundamentals_report"],
             "policy_report": final_state.get("policy_report", ""),
+            "macro_report": final_state.get("macro_report", ""),
+            "industry_report": final_state.get("industry_report", ""),
+            "financial_report": final_state.get("financial_report", ""),
+            "expectation_report": final_state.get("expectation_report", ""),
+            "evidence_ledger": final_state.get("evidence_ledger", ""),
+            "position_context": final_state.get("position_context", ""),
+            "final_report": final_state.get("final_report", ""),
             "investment_debate_state": {
                 "bull_history": final_state["investment_debate_state"]["bull_history"],
                 "bear_history": final_state["investment_debate_state"]["bear_history"],
@@ -468,7 +493,6 @@ class TradingAgentsGraph:
             },
             "investment_plan": final_state["investment_plan"],
             "final_trade_decision": final_state["final_trade_decision"],
-            "final_report": final_state.get("final_report", ""),
         }
 
         # Save to file. Reject ticker values that would escape the

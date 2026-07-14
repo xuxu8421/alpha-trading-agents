@@ -41,6 +41,7 @@ from tradingagents.agents.utils.structured import (
     invoke_structured_or_freetext,
 )
 from tradingagents.dataflows.akshare_cn import fetch_cn_sentiment, is_a_share
+from tradingagents.dataflows.config import get_config
 from tradingagents.dataflows.reddit import fetch_reddit_posts
 from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
 
@@ -75,6 +76,17 @@ def create_sentiment_analyst(llm):
             # return nothing). Swap in akshare CN sources: 千股千评 quant
             # sentiment + 个股新闻 headline buzz.
             cn = fetch_cn_sentiment(ticker)
+            if get_config().get("strict_data_mode"):
+                failures = [
+                    value
+                    for value in cn.values()
+                    if any(marker in str(value) for marker in ("获取失败", "DATA_UNAVAILABLE", "Error fetching"))
+                ]
+                if failures:
+                    raise RuntimeError(
+                        "Strict data mode rejected incomplete A-share sentiment packet: "
+                        + " | ".join(failures)
+                    )
             system_message = _build_cn_system_message(
                 ticker=ticker,
                 start_date=start_date,

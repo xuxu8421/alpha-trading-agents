@@ -6,6 +6,7 @@ from tradingagents.agents.analysts.financial_reading_framework import (
     financial_reading_framework,
 )
 from tradingagents.agents.analysts.financial_report_analyst import (
+    compact_statement_data,
     create_financial_report_analyst,
     prefetch_statement_data,
 )
@@ -56,3 +57,23 @@ def test_financial_agent_consumes_industry_context_and_returns_own_report():
     assert result["financial_report"].startswith("财报结论")
     assert "financial_statements" in result["evidence_ledger"]
 
+
+def test_statement_compaction_keeps_periods_and_material_columns():
+    raw = (
+        "# Income Statement\n"
+        "报告期,营业总收入,营业总收入_同比,无关字段\n"
+        "2025-12-31,100,0.20,999\n"
+        "2025-09-30,70,0.15,888\n"
+    )
+    packet = {
+        "annual": {"income_statement": raw},
+        "quarterly": {"income_statement": raw},
+        "limitations": [],
+        "as_of": "2026-07-14",
+    }
+    compact = compact_statement_data(packet)
+    text = compact["annual"]["income_statement"]
+    assert "2025-12-31" in text
+    assert "营业总收入_同比" in text
+    assert "无关字段" not in text
+    assert compact["quarterly"]["income_statement"].startswith("[duplicate")

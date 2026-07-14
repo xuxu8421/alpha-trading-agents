@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 from typing import Any
 
@@ -14,6 +16,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_income_statement,
     get_language_instruction,
 )
+from tradingagents.dataflows.config import get_config
 
 from .financial_reading_framework import financial_reading_framework
 
@@ -22,6 +25,92 @@ STATEMENT_TOOLS = {
     "income_statement": get_income_statement,
     "cashflow": get_cashflow,
 }
+
+_MATERIAL_TOKENS = (
+    "报告期",
+    "营业收入",
+    "营业总收入",
+    "营业成本",
+    "营业总成本",
+    "研发费用",
+    "销售费用",
+    "管理费用",
+    "财务费用",
+    "营业利润",
+    "利润总额",
+    "净利润",
+    "每股收益",
+    "货币资金",
+    "应收账款",
+    "存货",
+    "合同资产",
+    "合同负债",
+    "开发支出",
+    "商誉",
+    "无形资产",
+    "固定资产",
+    "资产总计",
+    "负债合计",
+    "短期借款",
+    "长期借款",
+    "股东权益",
+    "所有者权益",
+    "经营活动产生的现金流量净额",
+    "投资活动产生的现金流量净额",
+    "筹资活动产生的现金流量净额",
+    "现金及现金等价物净增加额",
+    "购建固定资产",
+)
+
+
+def _compact_statement(text: str) -> str:
+    """Keep all periods but only decision-relevant statement columns."""
+    if not text or "\n" not in text or text.startswith("数据不可用"):
+        return text
+    lines = text.splitlines()
+    csv_start = next(
+        (index for index, line in enumerate(lines) if "," in line and not line.startswith("#")),
+        None,
+    )
+    if csv_start is None:
+        return text
+    reader = csv.DictReader(io.StringIO("\n".join(lines[csv_start:])))
+    fields = reader.fieldnames or []
+    selected = [
+        field
+        for field in fields
+        if any(token in field.removesuffix("_同比") for token in _MATERIAL_TOKENS)
+    ]
+    if not selected:
+        return text
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=selected, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(reader)
+    source_headers = [line for line in lines[:csv_start] if line.startswith("#")]
+    return "\n".join(source_headers + [output.getvalue().strip()])
+
+
+def compact_statement_data(packet: dict[str, Any]) -> dict[str, Any]:
+    """Build a bounded prompt packet while preserving raw tables in the ledger."""
+    compact: dict[str, Any] = {
+        "annual": {},
+        "quarterly": {},
+        "limitations": list(packet.get("limitations", [])),
+        "as_of": packet.get("as_of"),
+        "source_contract": packet.get("source_contract"),
+    }
+    seen: dict[str, str] = {}
+    for frequency in ("annual", "quarterly"):
+        for name, value in packet.get(frequency, {}).items():
+            rendered = _compact_statement(str(value))
+            fingerprint = rendered.strip()
+            if fingerprint in seen:
+                compact[frequency][name] = f"[duplicate of {seen[fingerprint]}]"
+            else:
+                compact[frequency][name] = rendered
+                seen[fingerprint] = f"{frequency}.{name}"
+    return compact
 
 
 def prefetch_statement_data(ticker: str, trade_date: str) -> dict[str, Any]:
@@ -32,6 +121,8 @@ def prefetch_statement_data(ticker: str, trade_date: str) -> dict[str, Any]:
             try:
                 packet[frequency][name] = tool.func(ticker, frequency, trade_date)
             except Exception as exc:  # data gaps must be visible, not fatal
+                if get_config().get("strict_data_mode"):
+                    raise
                 message = f"数据不可用: {type(exc).__name__}: {exc}"
                 packet[frequency][name] = message
                 packet["limitations"].append(f"{frequency}.{name}: {message}")
@@ -46,6 +137,7 @@ def create_financial_report_analyst(llm):
         trade_date = state["trade_date"]
         industry = state.get("industry_report", "")
         statements = prefetch_statement_data(ticker, trade_date)
+        prompt_statements = compact_statement_data(statements)
         framework = financial_reading_framework(ticker, industry)
         prompt = ChatPromptTemplate.from_messages(
             [
@@ -79,7 +171,9 @@ def create_financial_report_analyst(llm):
                 "industry_report": industry,
                 "fundamentals_report": state.get("fundamentals_report", ""),
                 "framework": framework,
-                "statements": json.dumps(statements, ensure_ascii=False, default=str),
+                "statements": json.dumps(
+                    prompt_statements, ensure_ascii=False, default=str
+                ),
                 "language": get_language_instruction(),
             }
         )

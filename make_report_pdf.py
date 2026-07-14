@@ -21,6 +21,9 @@ import markdown as md
 
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 HOME = os.path.expanduser("~")
+RESULTS_DIR = os.getenv(
+    "TRADINGAGENTS_RESULTS_DIR", os.path.join(HOME, ".tradingagents", "logs")
+)
 CN_NAME = {"300811.SZ": "铂科新材", "300496.SZ": "中科创达", "002202.SZ": "金风科技",
            "603078.SS": "江化微", "003022.SZ": "联泓新科", "000938.SZ": "紫光股份",
            "600487.SS": "亨通光电",
@@ -112,7 +115,11 @@ def build_html(d: dict) -> str:
     # A-shares use Tencent/Sina/Eastmoney cross-checks; Yahoo is only a fallback.
     is_cn = bool(re.match(r"^\d{6}(\.(SZ|SS|SH|BJ))?$", str(ticker).strip(), re.I)) or \
         str(ticker).upper().endswith((".SZ", ".SS", ".SH", ".BJ"))
-    src_line = "腾讯 / 新浪 / 东方财富（交叉核验）" if is_cn else "yfinance（美股行情/财报/新闻）"
+    src_line = (
+        "腾讯 / 新浪（行情）· 东方财富 / 同花顺（新闻与资金）"
+        if is_cn
+        else "yfinance（美股行情/财报/新闻）"
+    )
     disc_src = "腾讯、新浪与东方财富/akshare" if is_cn else "yfinance"
     disc_proxy = "情绪/资金/政策为 A 股代理指标，" if is_cn else ""
     final = d.get("final_trade_decision", "")
@@ -159,6 +166,13 @@ def build_html(d: dict) -> str:
         body_html = md2html(_AI_NOISE.sub("", d.get("investment_plan", "")))
 
     gen = datetime.now().strftime("%Y-%m-%d %H:%M")
+    model_label = os.getenv("TRADINGAGENTS_REPORT_MODEL", "TradingAgents")
+    audit_note = os.getenv("TRADINGAGENTS_REPORT_AUDIT_NOTE", "").strip()
+    audit_html = (
+        f'<div class="callout"><h3>数据审计说明</h3>{md2html(audit_note)}</div>'
+        if audit_note
+        else ""
+    )
     return f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
 <title>{name} {ticker} 研究报告</title>
 <style>
@@ -197,16 +211,18 @@ def build_html(d: dict) -> str:
   blockquote{{ border-left:3px solid var(--gold); margin:8px 0; padding:2px 12px; color:#444; background:#fafafa; }}
   strong{{ color:#0f2233; }}
   .muted{{ color:#9aa3af; }}
-  .disc{{ margin-top:24px; padding-top:10px; border-top:1px solid var(--line); color:#5b6675; font-size:10px; }}
+  .disc{{ display:none; }}
 </style></head><body>
   <div class="masthead">
     <div>
       <div class="tag">EQUITY RESEARCH · 多智能体投研</div>
       <h1>{name}（{ticker}）</h1>
-      <div class="meta">分析日 {date} · TradingAgents(LangGraph) · DeepSeek-chat · {src_line}</div>
+      <div class="meta">分析日 {date} · TradingAgents(LangGraph) · {model_label} · {src_line}</div>
     </div>
     <div class="ratingbig">{rating_label}</div>
   </div>
+
+  {audit_html}
 
   <div class="summary">{card_html}</div>
 
@@ -224,12 +240,13 @@ def build_html(d: dict) -> str:
 
 def main():
     ticker = sys.argv[1]
-    logs = glob.glob(os.path.join(HOME, ".tradingagents", "logs", ticker,
+    logs = glob.glob(os.path.join(RESULTS_DIR, ticker,
                                   "TradingAgentsStrategy_logs", "full_states_log_*.json"))
     if not logs:
         print(f"No log found for {ticker}")
         sys.exit(1)
-    d = json.load(open(max(logs, key=os.path.getmtime), encoding="utf-8"))
+    with open(max(logs, key=os.path.getmtime), encoding="utf-8") as log_file:
+        d = json.load(log_file)
     if not d.get("final_report"):
         print("[warn] no final_report in log — rerun the pipeline so the Report Writer produces it.")
     name = CN_NAME.get(ticker, ticker)

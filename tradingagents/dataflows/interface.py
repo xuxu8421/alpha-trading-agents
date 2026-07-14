@@ -111,6 +111,9 @@ VENDOR_METHODS = {
     },
     # technical_indicators
     "get_indicators": {
+        # The shared stockstats implementation routes A-share OHLCV through
+        # akshare/Eastmoney (Tencent fallback) before calculating indicators.
+        "akshare": get_stock_stats_indicators_window,
         "alpha_vantage": get_alpha_vantage_indicator,
         "yfinance": get_stock_stats_indicators_window,
     },
@@ -185,6 +188,7 @@ def get_vendor(category: str, method: str = None) -> str:
 def route_to_vendor(method: str, *args, **kwargs):
     """Route method calls to appropriate vendor implementation with fallback support."""
     category = get_category_for_method(method)
+    strict_data_mode = bool(get_config().get("strict_data_mode"))
     vendor_config = get_vendor(category, method)
     primary_vendors = [v.strip() for v in vendor_config.split(',')]
 
@@ -242,6 +246,8 @@ def route_to_vendor(method: str, *args, **kwargs):
     # empty string, so the agent reports "unavailable" instead of inventing a
     # value. This takes precedence over incidental fallback errors.
     if last_no_data is not None:
+        if strict_data_mode:
+            raise last_no_data
         if first_error is not None:
             # A vendor also hit a real error; surface it in logs so the no-data
             # verdict can't hide a broken primary (network/auth/etc.).
@@ -268,7 +274,7 @@ def route_to_vendor(method: str, *args, **kwargs):
     # enrichment categories degrade to a sentinel instead, so flavour data can't
     # abort the run.
     if first_error is not None:
-        if category in OPTIONAL_CATEGORIES:
+        if category in OPTIONAL_CATEGORIES and not strict_data_mode:
             logger.warning("Optional %s unavailable for %s: %s", category, method, first_error)
             return (
                 f"DATA_UNAVAILABLE: optional {category} could not be retrieved "

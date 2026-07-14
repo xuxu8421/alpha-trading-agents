@@ -86,6 +86,25 @@ class FredConfigTests(unittest.TestCase):
         # Routing relies on this subclassing for "vendor unavailable" handling.
         self.assertTrue(issubclass(fred.FredNotConfiguredError, ValueError))
 
+    def test_keyless_official_csv_endpoint_is_used_when_key_missing(self):
+        response = mock.Mock()
+        response.status_code = 200
+        response.text = "DATE,DGS10\n2026-07-10,4.56\n"
+        response.raise_for_status.return_value = None
+        with mock.patch.dict("os.environ", {}, clear=True), mock.patch.object(
+            fred.requests, "get", return_value=response
+        ) as get:
+            payload = fred._request(
+                "series/observations",
+                {
+                    "series_id": "DGS10",
+                    "observation_start": "2026-07-01",
+                    "observation_end": "2026-07-14",
+                },
+            )
+        self.assertEqual(payload["observations"][0]["value"], "4.56")
+        self.assertIn("fredgraph.csv", get.call_args.args[0])
+
 
 @pytest.mark.unit
 class FredFormattingTests(unittest.TestCase):

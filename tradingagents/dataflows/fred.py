@@ -8,6 +8,8 @@ A free API key (https://fred.stlouisfed.org/docs/api/api_key.html) is read from
 ``FRED_API_KEY``; if it is unset the vendor raises ``FredNotConfiguredError`` so
 the routing layer treats it as "unavailable" rather than a hard crash.
 """
+import csv
+import io
 import logging
 import os
 from datetime import datetime, timedelta
@@ -19,6 +21,7 @@ from .errors import VendorNotConfiguredError
 logger = logging.getLogger(__name__)
 
 FRED_API_BASE = "https://api.stlouisfed.org/fred"
+FRED_GRAPH_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 
 # Network timeout (seconds) so a stalled request can't hang the agents,
 # mirroring the Alpha Vantage client.
@@ -71,6 +74,18 @@ MACRO_SERIES = {
     "retail_sales": "RSAFS",
 }
 
+SERIES_METADATA = {
+    "FEDFUNDS": ("Federal Funds Effective Rate", "Percent", "Monthly"),
+    "DGS2": ("Market Yield on U.S. Treasury Securities at 2-Year", "Percent", "Daily"),
+    "DGS10": ("Market Yield on U.S. Treasury Securities at 10-Year", "Percent", "Daily"),
+    "DGS30": ("Market Yield on U.S. Treasury Securities at 30-Year", "Percent", "Daily"),
+    "T10Y2Y": ("10-Year Treasury Minus 2-Year Treasury", "Percent", "Daily"),
+    "CPIAUCSL": ("Consumer Price Index for All Urban Consumers", "Index", "Monthly"),
+    "CPILFESL": ("Consumer Price Index Less Food and Energy", "Index", "Monthly"),
+    "VIXCLS": ("CBOE Volatility Index: VIX", "Index", "Daily"),
+    "UNRATE": ("Unemployment Rate", "Percent", "Monthly"),
+}
+
 
 class FredNotConfiguredError(VendorNotConfiguredError):
     """Raised when FRED is selected but no API key is configured.
@@ -117,7 +132,44 @@ def _resolve_series_id(indicator: str) -> str:
 
 def _request(path: str, params: dict) -> dict:
     """GET a FRED endpoint, surfacing FRED's JSON error body on a bad request."""
-    api_params = {**params, "api_key": get_api_key(), "file_type": "json"}
+    api_key = os.getenv("FRED_API_KEY")
+    if not api_key:
+        series_id = str(params.get("series_id", "")).upper()
+        if path == "series":
+            title, units, frequency = SERIES_METADATA.get(
+                series_id, (series_id, "", "")
+            )
+            return {
+                "seriess": [
+                    {
+                        "title": title,
+                        "units_short": units,
+                        "frequency": frequency,
+                        "seasonal_adjustment_short": "",
+                    }
+                ]
+            }
+        if path == "series/observations":
+            response = requests.get(
+                FRED_GRAPH_CSV,
+                params={
+                    "id": series_id,
+                    "cosd": params.get("observation_start"),
+                    "coed": params.get("observation_end"),
+                },
+                timeout=REQUEST_TIMEOUT,
+            )
+            response.raise_for_status()
+            rows = list(csv.DictReader(io.StringIO(response.text)))
+            return {
+                "observations": [
+                    {"date": row.get("DATE", ""), "value": row.get(series_id, ".")}
+                    for row in rows
+                ]
+            }
+        raise ValueError(f"Unsupported keyless FRED path: {path}")
+
+    api_params = {**params, "api_key": api_key, "file_type": "json"}
     response = requests.get(
         f"{FRED_API_BASE}/{path}", params=api_params, timeout=REQUEST_TIMEOUT
     )
