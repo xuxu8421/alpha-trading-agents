@@ -225,6 +225,42 @@ def init_db(conn: sqlite3.Connection) -> None:
             payload TEXT NOT NULL,
             UNIQUE(trade_date)
         );
+
+        CREATE TABLE IF NOT EXISTS thesis_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER NOT NULL UNIQUE,
+            ticker TEXT NOT NULL,
+            report_date TEXT NOT NULL,
+            macro_claim TEXT NOT NULL,
+            industry_claim TEXT NOT NULL,
+            company_claim TEXT NOT NULL,
+            expectation_claim TEXT NOT NULL,
+            action TEXT NOT NULL,
+            horizon TEXT NOT NULL,
+            confidence REAL,
+            catalysts TEXT NOT NULL,
+            invalidations TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(run_id) REFERENCES runs(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS thesis_reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            snapshot_id INTEGER NOT NULL,
+            review_date TEXT NOT NULL,
+            status TEXT NOT NULL,
+            macro_verdict TEXT NOT NULL,
+            industry_verdict TEXT NOT NULL,
+            company_verdict TEXT NOT NULL,
+            expectation_verdict TEXT NOT NULL,
+            timing_verdict TEXT NOT NULL,
+            data_verdict TEXT NOT NULL,
+            attribution TEXT NOT NULL,
+            evidence TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(snapshot_id, review_date),
+            FOREIGN KEY(snapshot_id) REFERENCES thesis_snapshots(id)
+        );
         """
     )
     _ensure_columns(
@@ -393,6 +429,44 @@ def upsert_score(conn: sqlite3.Connection, run_id: int, horizon: int, score: dic
     conn.commit()
 
 
+def upsert_thesis_snapshot(conn: sqlite3.Connection, run_id: int, snapshot: dict) -> int:
+    now = datetime.now().isoformat(timespec="seconds")
+    conn.execute(
+        """
+        INSERT INTO thesis_snapshots (
+            run_id, ticker, report_date, macro_claim, industry_claim, company_claim,
+            expectation_claim, action, horizon, confidence, catalysts, invalidations, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(run_id) DO UPDATE SET
+            ticker=excluded.ticker, report_date=excluded.report_date,
+            macro_claim=excluded.macro_claim, industry_claim=excluded.industry_claim,
+            company_claim=excluded.company_claim, expectation_claim=excluded.expectation_claim,
+            action=excluded.action, horizon=excluded.horizon, confidence=excluded.confidence,
+            catalysts=excluded.catalysts, invalidations=excluded.invalidations,
+            created_at=excluded.created_at
+        """,
+        (
+            run_id,
+            snapshot.get("ticker", ""),
+            snapshot.get("report_date", ""),
+            snapshot.get("macro_claim", ""),
+            snapshot.get("industry_claim", ""),
+            snapshot.get("company_claim", ""),
+            snapshot.get("expectation_claim", ""),
+            snapshot.get("action", "unknown"),
+            snapshot.get("horizon", "T+5"),
+            snapshot.get("confidence"),
+            json.dumps(snapshot.get("catalysts", []), ensure_ascii=False),
+            json.dumps(snapshot.get("invalidations", []), ensure_ascii=False),
+            now,
+        ),
+    )
+    conn.commit()
+    return int(
+        conn.execute("SELECT id FROM thesis_snapshots WHERE run_id=?", (run_id,)).fetchone()["id"]
+    )
+
+
 def list_runs(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     return list(conn.execute("SELECT * FROM runs ORDER BY report_date DESC, ticker"))
 
@@ -408,6 +482,7 @@ def latest_dashboard_rows(conn: sqlite3.Connection) -> dict:
         for r in conn.execute("SELECT * FROM candidate_strategy_weights ORDER BY strategy")
     ]
     optimization = _latest_json_payload(conn, "optimization_reviews")
+    thesis_review = _latest_thesis_review_payload(conn)
     return {
         "runs": runs,
         "outcomes": outcomes,
@@ -416,7 +491,29 @@ def latest_dashboard_rows(conn: sqlite3.Connection) -> dict:
         "tasks": tasks,
         "candidate_strategy_weights": candidate_weights,
         "optimization_review": optimization,
+        "thesis_review": thesis_review,
     }
+
+
+def _latest_thesis_review_payload(conn: sqlite3.Connection) -> dict:
+    rows = [
+        dict(row)
+        for row in conn.execute(
+            """SELECT tr.*, ts.ticker, ts.report_date, ts.action, ts.horizon
+            FROM thesis_reviews tr JOIN thesis_snapshots ts ON ts.id=tr.snapshot_id
+            WHERE tr.review_date=(SELECT MAX(review_date) FROM thesis_reviews)
+            ORDER BY ts.ticker"""
+        )
+    ]
+    if not rows:
+        return {}
+    for row in rows:
+        for key in ("attribution", "evidence"):
+            try:
+                row[key] = json.loads(row[key] or "{}")
+            except (TypeError, ValueError):
+                pass
+    return {"review_date": rows[0]["review_date"], "reviews": rows}
 
 
 def _latest_json_payload(conn: sqlite3.Connection, table: str) -> dict:

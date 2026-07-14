@@ -27,7 +27,7 @@ from .market import evaluate_price_path, latest_a_share_trade_date, previous_wee
 from .market_pulse import build_market_pulse
 from .optimizer import build_optimization_review
 from .scoring import score_outcome
-from .signals import run_summary_from_state, scan_degradations
+from .signals import extract_thesis_snapshot, run_summary_from_state, scan_degradations
 from .storage import (
     connect,
     list_runs,
@@ -35,7 +35,9 @@ from .storage import (
     upsert_outcome,
     upsert_run,
     upsert_score,
+    upsert_thesis_snapshot,
 )
+from .thesis_review import build_weekly_thesis_review
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -59,6 +61,7 @@ def main(argv: list[str] | None = None) -> int:
             "optimize",
             "market-pulse",
             "industry-intelligence",
+            "thesis-review",
         ],
         default="weekly",
     )
@@ -166,6 +169,14 @@ def main(argv: list[str] | None = None) -> int:
         run_reports(conn, args.tickers, args.date)
         ingest_existing_logs(conn)
         evaluate_all(conn)
+    if args.mode in {"weekly", "thesis-review"}:
+        thesis_review = build_weekly_thesis_review(conn, args.date)
+        print(
+            "Friday thesis review: "
+            f"{thesis_review.get('review_date')} {thesis_review.get('status')} "
+            f"reviewed={len(thesis_review.get('reviews', []))} "
+            f"tasks={len(thesis_review.get('tasks_created', []))}"
+        )
     if args.mode in {
         "init",
         "ingest",
@@ -182,6 +193,7 @@ def main(argv: list[str] | None = None) -> int:
         "optimize",
         "market-pulse",
         "industry-intelligence",
+        "thesis-review",
     }:
         try:
             path = build_dashboard(conn)
@@ -226,6 +238,7 @@ def ingest_existing_logs(conn) -> int:
             },
         )
         replace_degradations(conn, run_id, events)
+        upsert_thesis_snapshot(conn, run_id, extract_thesis_snapshot(state))
         count += 1
     print(f"Ingested logs: {count}")
     return count

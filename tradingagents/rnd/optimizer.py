@@ -12,6 +12,7 @@ from .data_auditor import build_data_quality_audit
 from .market import evaluate_price_path
 from .scoring import score_outcome
 from .storage import list_runs, upsert_outcome, upsert_score
+from .thesis_review import build_weekly_thesis_review
 
 
 CANDIDATE_HORIZONS = (1, 3, 5)
@@ -34,12 +35,14 @@ def build_optimization_review(conn, trade_date: str | None = None) -> dict[str, 
     candidate_iteration = update_candidate_strategy_weights(conn)
     auction = _refresh_auction_outcome(conn, trade_date)
     audit = build_data_quality_audit(conn, STOCK_UNIVERSE, trade_date)
+    thesis_review = build_weekly_thesis_review(conn, trade_date)
 
     tasks = []
     tasks.extend(_audit_tasks(conn, audit))
     tasks.extend(_auction_tasks(conn, auction, trade_date))
     tasks.extend(_candidate_tasks(conn, candidates, candidate_iteration))
     tasks.extend(_report_tasks(conn, reports))
+    tasks.extend(thesis_review.get("tasks_created", []))
 
     status = _status(audit, auction, reports, candidates)
     summary = _summary(status, audit, auction, reports, candidates, len(tasks))
@@ -59,6 +62,7 @@ def build_optimization_review(conn, trade_date: str | None = None) -> dict[str, 
             "summary": audit.get("summary"),
             "issue_count": len(audit.get("issues", [])),
         },
+        "thesis_review": thesis_review,
         "tasks_created": tasks,
     }
     _persist_optimization_review(conn, payload)

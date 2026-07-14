@@ -73,6 +73,50 @@ def run_summary_from_state(state: dict) -> dict:
     }
 
 
+def extract_thesis_snapshot(state: dict) -> dict:
+    """Extract reviewable claims from a completed V2 graph state."""
+    final_report = state.get("final_report", "")
+    meta = parse_report_meta(final_report)
+    expectation = state.get("expectation_report", "")
+    return {
+        "ticker": state.get("company_of_interest", ""),
+        "report_date": state.get("trade_date", ""),
+        "macro_claim": _claim_excerpt(state.get("macro_report") or state.get("policy_report", "")),
+        "industry_claim": _claim_excerpt(state.get("industry_report", "")),
+        "company_claim": _claim_excerpt(
+            state.get("financial_report") or state.get("fundamentals_report", "")
+        ),
+        "expectation_claim": _claim_excerpt(expectation),
+        "action": normalize_action(meta.get("action", ""), meta.get("rating", ""), final_report),
+        "horizon": _extract_horizon(expectation or final_report),
+        "confidence": extract_confidence(expectation + "\n" + final_report),
+        "catalysts": _extract_tagged_lines(expectation + "\n" + final_report, ("催化", "触发")),
+        "invalidations": _extract_tagged_lines(
+            expectation + "\n" + final_report,
+            ("失效", "证伪", "推翻", "若", "如果"),
+        ),
+    }
+
+
+def _claim_excerpt(text: str, limit: int = 600) -> str:
+    return re.sub(r"\s+", " ", text or "").strip()[:limit]
+
+
+def _extract_horizon(text: str) -> str:
+    match = re.search(r"(?:T\+\s*)?(1|5|10|20|60)\s*(?:个?交易日|日)", text or "", re.I)
+    return f"T+{match.group(1)}" if match else "T+5"
+
+
+def _extract_tagged_lines(text: str, keywords: tuple[str, ...]) -> list[str]:
+    chunks = re.split(r"[\n。；]", text or "")
+    found = []
+    for chunk in chunks:
+        clean = re.sub(r"\s+", " ", chunk).strip(" -*#：:")
+        if clean and any(keyword in clean for keyword in keywords):
+            found.append(clean[:300])
+    return found[:10]
+
+
 def scan_degradations(state: dict) -> list[DegradationEvent]:
     events: list[DegradationEvent] = []
     sections = {
@@ -81,6 +125,10 @@ def scan_degradations(state: dict) -> list[DegradationEvent]:
         "news": state.get("news_report", ""),
         "fundamentals": state.get("fundamentals_report", ""),
         "policy": state.get("policy_report", ""),
+        "macro": state.get("macro_report", ""),
+        "industry": state.get("industry_report", ""),
+        "financial_report": state.get("financial_report", ""),
+        "expectation": state.get("expectation_report", ""),
         "research": state.get("investment_plan", ""),
         "trader": state.get("trader_investment_decision", ""),
         "portfolio": state.get("final_trade_decision", ""),
