@@ -43,10 +43,38 @@ __all__ = [
     "resolve_instrument_identity",
     "get_instrument_context_from_state",
     "get_language_instruction",
+    "get_research_context_from_state",
+    "get_decision_context_from_state",
     "create_msg_delete",
 ]
 
 logger = logging.getLogger(__name__)
+
+
+def get_research_context_from_state(state: Mapping[str, Any]) -> str:
+    """Render the shared macro/industry prior used by every specialist."""
+    macro = state.get("macro_report") or state.get("policy_report") or "未形成宏观政策判断"
+    industry = state.get("industry_report") or "未形成行业基准"
+    return (
+        "\n\n## 共享三级研究上文（不得忽略）\n"
+        f"### 国家/宏观政策\n{macro}\n"
+        f"### 行业基准\n{industry}\n"
+        "你的专业分析必须说明与上述判断一致还是冲突，并给出证据和失效条件。"
+    )
+
+
+def get_decision_context_from_state(state: Mapping[str, Any]) -> str:
+    """Keep source reports first-class all the way to the final decision."""
+    sections = (
+        ("国家/宏观政策", state.get("macro_report") or state.get("policy_report", "")),
+        ("行业位置与预期", state.get("industry_report", "")),
+        ("专业财报分析", state.get("financial_report", "")),
+        ("预期差与情景", state.get("expectation_report", "")),
+        ("持仓与风险预算", state.get("position_context", "")),
+    )
+    rendered = ["\n\n## 一级证据上下文（必须直接引用，不得只依赖上游摘要）"]
+    rendered.extend(f"### {title}\n{value or '暂无'}" for title, value in sections)
+    return "\n".join(rendered)
 
 
 def get_language_instruction() -> str:
@@ -267,6 +295,4 @@ def create_msg_delete():
         return {"messages": removal_operations + [placeholder]}
 
     return delete_messages
-
-
 

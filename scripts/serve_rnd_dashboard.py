@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import http.server
 import argparse
+import http.server
 import socketserver
 from pathlib import Path
 

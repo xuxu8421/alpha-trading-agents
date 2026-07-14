@@ -26,6 +26,7 @@ def test_no_env_uses_built_in_defaults(monkeypatch):
     assert dc.DEFAULT_CONFIG["backend_url"] is None
     assert dc.DEFAULT_CONFIG["max_debate_rounds"] == 1
     assert dc.DEFAULT_CONFIG["checkpoint_enabled"] is False
+    assert dc.DEFAULT_CONFIG["strict_data_mode"] is False
 
 
 def test_string_overrides(monkeypatch):
@@ -66,6 +67,12 @@ def test_int_coercion(monkeypatch):
 def test_bool_coercion(monkeypatch, raw, expected):
     dc = _reload_with_env(monkeypatch, TRADINGAGENTS_CHECKPOINT_ENABLED=raw)
     assert dc.DEFAULT_CONFIG["checkpoint_enabled"] is expected
+
+
+@pytest.mark.parametrize("raw,expected", [("true", True), ("false", False)])
+def test_strict_data_mode_env_override(monkeypatch, raw, expected):
+    dc = _reload_with_env(monkeypatch, TRADINGAGENTS_STRICT_DATA_MODE=raw)
+    assert dc.DEFAULT_CONFIG["strict_data_mode"] is expected
 
 
 def test_reasoning_thinking_overrides(monkeypatch):

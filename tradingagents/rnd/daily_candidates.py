@@ -11,7 +11,6 @@ import requests
 
 from .config import STOCK_UNIVERSE
 
-
 REFERENCE_PROJECTS = [
     {
         "name": "daily_stock_analysis strategies",

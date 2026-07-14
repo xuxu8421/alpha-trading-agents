@@ -7,18 +7,18 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from string import Template
 
+from tradingagents.dataflows.akshare_cn import _get_ohlcv_tencent_frame, get_ohlcv_akshare_frame
+
 from .call_auction import latest_call_auction_brief
 from .config import DASHBOARD_PATH, STOCK_UNIVERSE, ensure_dirs
 from .daily_candidates import latest_daily_candidates
-from .data_auditor import latest_data_quality_audit
 from .daily_review import latest_daily_review
+from .data_auditor import latest_data_quality_audit
 from .industry_chain import build_industry_chain_brief
 from .market_pulse import latest_market_pulse
 from .premarket import build_premarket_brief
 from .signals import extract_confidence, normalize_action, parse_report_meta
 from .storage import latest_dashboard_rows
-from tradingagents.dataflows.akshare_cn import _get_ohlcv_tencent_frame, get_ohlcv_akshare_frame
-
 
 ARCH_IMAGE = "assets/alpha_rnd_architecture_ai.png"
 
@@ -88,7 +88,7 @@ SCREENING_PLACEHOLDERS = [
 ARCHITECTURE = {
     "title": "Alpha R&D LangGraph 多智能体协作拓扑",
     "image": ARCH_IMAGE,
-    "caption": "真实工作流：Data Auditor 先校验行情/财务/新闻证据 -> Analyst Chain 生成证据 -> Bull/Bear 辩论 -> Research Manager 汇总投资计划 -> Trader 给出交易方案 -> 三类 Risk Debate -> Portfolio Manager 裁决 -> Report Writer/证据库 -> 复盘反哺 Prompt 与架构。",
+    "caption": "真实工作流：Data Auditor -> 国家/宏观政策 -> 行业结构与预期 -> 公司/财报 -> 预期差 -> 多空研究与交易风控 -> 决策报告 -> 周五假设归因，结论和证据沿同一状态总线贯通。",
 }
 
 SYSTEM_CADENCE = [
@@ -100,7 +100,7 @@ SYSTEM_CADENCE = [
     {"frequency": "每日", "time": "15:45", "module": "统一优化复盘", "status": "运行中", "note": "交易日对照集合竞价、候选股、研报和数据审计结果，写入优化任务并更新权重。"},
     {"frequency": "每日", "time": "18:30", "module": "每日总结与飞书", "status": "待配置", "note": "飞书 Webhook 配置完成后启用；整合候选、竞价、产业情报和风险。"},
     {"frequency": "每日", "time": "19:15", "module": "产业情报", "status": "运行中", "note": "汇总公告、财经媒体、公众号、雪球与个人作者观点。"},
-    {"frequency": "每周", "time": "周五 20:30", "module": "研报复盘与自迭代", "status": "运行中", "note": "补充长周期评分、偏差归因、Prompt 与架构优化任务。"},
+    {"frequency": "每周", "time": "周五 20:30", "module": "三级假设复盘与自迭代", "status": "运行中", "note": "按预测→实际→宏观/行业/公司/预期/时点/数据归因→规则迭代闭环；证据不足的因果层保持未验证。"},
     {"frequency": "按需", "time": "手动", "module": "个股完整研报", "status": "可运行", "note": "新增股票或重大事件时触发多智能体完整研究。"},
 ]
 
@@ -435,17 +435,18 @@ button.tiny{font-size:12px;padding:4px 7px}
   <div class="commandRow">
     <nav class="nav">
       <button class="active" data-tab="overview">今日决策</button>
-	      <button data-tab="candidates">每日候选</button>
-	      <button data-tab="pulse">市场脉搏</button>
-	      <button data-tab="premarket">盘前消息</button>
+      <button data-tab="candidates">每日候选</button>
+      <button data-tab="pulse">市场脉搏</button>
+      <button data-tab="premarket">盘前消息</button>
       <button data-tab="auction">集合竞价</button>
       <button data-tab="industry">产业链知识</button>
+      <button data-tab="review">周五复盘</button>
       <button data-tab="pool">选股池</button>
     </nav>
-	    <div class="topActions">
-	      <button class="ghost" data-action="cadence">更新日历</button>
-	      <button class="ghost" data-action="data-audit">数据检查</button>
-	      <button class="ghost" data-action="architecture">系统架构</button>
+    <div class="topActions">
+      <button class="ghost" data-action="cadence">更新日历</button>
+      <button class="ghost" data-action="data-audit">数据检查</button>
+      <button class="ghost" data-action="architecture">系统架构</button>
       <button class="ghost" data-action="optimize">优化</button>
       <button data-action="render">刷新</button>
     </div>
@@ -458,6 +459,7 @@ button.tiny{font-size:12px;padding:4px 7px}
   <section class="panel" id="premarket"></section>
   <section class="panel" id="auction"></section>
   <section class="panel" id="industry"></section>
+  <section class="panel" id="review"></section>
   <section class="panel" id="pool"></section>
 </main>
 <div class="drawerMask" id="drawerMask"></div>
@@ -962,7 +964,18 @@ function openDrawer(){ document.getElementById('drawer').classList.add('open'); 
 function closeDrawer(){ document.getElementById('drawer').classList.remove('open'); document.getElementById('drawerMask').classList.remove('open'); }
 async function copyText(s){ try{ await navigator.clipboard.writeText(s); } catch(e){ console.warn(e); } }
 function switchTab(tab){ document.querySelectorAll('.nav button,.panel').forEach(function(x){ x.classList.remove('active'); }); const btn = document.querySelector('.nav button[data-tab="' + tab + '"]'); if(btn) btn.classList.add('active'); const panel = document.getElementById(tab); if(panel) panel.classList.add('active'); }
-function render(){ renderStatus(); renderOverview(); renderCandidates(); renderMarketPulse(); renderPremarket(); renderAuction(); renderIndustry(); renderPool(); }
+function renderThesisReview(){
+  const review = DATA.thesis_review || {};
+  const rows = (review.reviews || []).map(function(r){
+    const evidence = r.evidence || {};
+    const verdict = function(v){ return '<span class="softChip ' + h(v) + '">' + h(v || '--') + '</span>'; };
+    return '<tr><td><b>' + h(r.ticker || '') + '</b><br><span class="muted small">' + h(r.report_date || '') + ' · ' + h(r.horizon || '') + '</span></td><td>' + h(r.action || '--') + '</td><td>' + verdict(r.macro_verdict) + '</td><td>' + verdict(r.industry_verdict) + '</td><td>' + verdict(r.company_verdict) + '</td><td>' + verdict(r.expectation_verdict) + '</td><td>' + verdict(r.timing_verdict) + '</td><td>' + verdict(r.data_verdict) + '</td><td>' + h(evidence.return_pct === null || evidence.return_pct === undefined ? '--' : evidence.return_pct + '%') + '<br><span class="muted small">相对 ' + h(evidence.relative_return_pct === null || evidence.relative_return_pct === undefined ? '--' : evidence.relative_return_pct + '%') + '</span></td></tr>';
+  }).join('');
+  const empty = '<div class="empty">暂无可复盘假设。周五任务会在研报产生 T+5 结果后自动归因。</div>';
+  const body = rows ? '<div class="tableWrap"><table><thead><tr><th>标的</th><th>动作</th><th>宏观</th><th>行业</th><th>公司</th><th>预期</th><th>时点</th><th>数据</th><th>结果</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : empty;
+  document.getElementById('review').innerHTML = '<div class="section"><div class="sectionHead"><div><div class="sectionTitle">周五三级假设复盘</div><div class="muted small">预测 → 实际 → 归因 → 规则迭代；价格不能单独证明宏观、行业或公司因果错误。</div></div><span class="softChip">' + h(review.review_date || '待运行') + '</span></div><div class="sectionBody">' + body + '</div></div>';
+}
+function render(){ renderStatus(); renderOverview(); renderCandidates(); renderMarketPulse(); renderPremarket(); renderAuction(); renderIndustry(); renderThesisReview(); renderPool(); }
 document.addEventListener('click', function(e){
   const jump = e.target.closest('[data-tab-jump]'); if(jump){ switchTab(jump.dataset.tabJump); return; }
   const nav = e.target.closest('.nav button[data-tab]'); if(nav){ switchTab(nav.dataset.tab); return; }
@@ -973,10 +986,10 @@ document.addEventListener('click', function(e){
   if(action === 'quote') openQuote(btn.dataset.ticker || '', btn.dataset.name || '');
   if(action === 'track-pick'){ currentTrackId = btn.dataset.track || currentTrackId; currentIndustryView = 'map'; industryQuery = ''; renderIndustry(); }
   if(action === 'industry-view'){ currentIndustryView = btn.dataset.view || 'map'; industryQuery = ''; renderIndustry(); }
-	  if(action === 'chain-detail') openChainDetail(btn.dataset.ticker || '');
-	  if(action === 'architecture') openArchitecture();
-	  if(action === 'data-audit') openDataAudit();
-	  if(action === 'cadence') openCadence();
+  if(action === 'chain-detail') openChainDetail(btn.dataset.ticker || '');
+  if(action === 'architecture') openArchitecture();
+  if(action === 'data-audit') openDataAudit();
+  if(action === 'cadence') openCadence();
   if(action === 'optimize') openOptimize();
   if(action === 'pool-rules') openPoolRules();
   if(action === 'add-stock') openAddStock();

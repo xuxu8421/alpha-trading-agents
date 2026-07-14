@@ -13,6 +13,10 @@ def _state():
     return {
         "market_report": "MKT",
         "news_report": "NEWS",
+        "macro_report": "MACRO",
+        "industry_report": "INDUSTRY",
+        "financial_report": "FINANCIAL",
+        "expectation_report": "EXPECTATION",
         "investment_debate_state": {"judge_decision": "RM PLAN"},
         "trader_investment_plan": "TRADE",
         "risk_debate_state": {"judge_decision": "PM DECISION"},
@@ -25,12 +29,16 @@ def test_write_report_tree_creates_files(tmp_path):
     assert out.name == "complete_report.md"
     assert (tmp_path / "1_analysts" / "market.md").read_text() == "MKT"
     assert (tmp_path / "1_analysts" / "news.md").read_text() == "NEWS"
+    assert (tmp_path / "1_analysts" / "macro.md").read_text() == "MACRO"
+    assert (tmp_path / "1_analysts" / "industry.md").read_text() == "INDUSTRY"
+    assert (tmp_path / "1_analysts" / "financial_report.md").read_text() == "FINANCIAL"
+    assert (tmp_path / "1_analysts" / "expectation.md").read_text() == "EXPECTATION"
     assert (tmp_path / "2_research" / "manager.md").read_text() == "RM PLAN"
     assert (tmp_path / "3_trading" / "trader.md").read_text() == "TRADE"
     assert (tmp_path / "5_portfolio" / "decision.md").read_text() == "PM DECISION"
     complete = out.read_text()
     assert "Trading Analysis Report: AAPL" in complete
-    assert "MKT" in complete and "PM DECISION" in complete
+    assert "MKT" in complete and "PM DECISION" in complete and "EXPECTATION" in complete
 
 
 @pytest.mark.unit

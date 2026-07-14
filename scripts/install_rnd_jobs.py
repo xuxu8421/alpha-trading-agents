@@ -7,7 +7,6 @@ import plistlib
 import subprocess
 from pathlib import Path
 
-
 PROJECT_ROOT = Path.home() / "XSZ_PROJECTS" / "desktop-projects" / "quant-projects" / "alpha-trading-agents"
 LOG_DIR = Path.home() / ".tradingagents" / "rnd"
 WRAPPER_DIR = LOG_DIR / "jobs"

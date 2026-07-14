@@ -7,7 +7,6 @@ import plistlib
 import subprocess
 from pathlib import Path
 
-
 LABEL = "com.xusizhang.alpha-rnd-dashboard"
 PROJECT_ROOT = Path.home() / "XSZ_PROJECTS" / "desktop-projects" / "quant-projects" / "alpha-trading-agents"
 PLIST_PATH = Path.home() / "Library" / "LaunchAgents" / f"{LABEL}.plist"

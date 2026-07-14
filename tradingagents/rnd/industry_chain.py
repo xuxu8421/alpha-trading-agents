@@ -4,7 +4,6 @@ from datetime import datetime
 
 from .industry_intelligence import latest_industry_intelligence
 
-
 PROJECT_REFERENCES = [
     {
         "name": "AICARDMAP",

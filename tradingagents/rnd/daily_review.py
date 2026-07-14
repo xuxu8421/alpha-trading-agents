@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from contextlib import suppress
 from datetime import date, datetime
 from typing import Any
 
@@ -13,7 +14,6 @@ from .config import STOCK_UNIVERSE
 from .daily_candidates import latest_daily_candidates
 from .data_auditor import latest_data_quality_audit
 from .market_pulse import latest_market_pulse
-
 
 BROAD_INDEX_NAMES = {"贵州茅台", "比亚迪", "京东方Ａ", "京东方A", "宁德时代", "中信证券", "恒瑞医药"}
 ALWAYS_HOME_BLOCKED = {"贵州茅台"}
@@ -499,10 +499,8 @@ def _review_findings(conn, trade_date: str) -> dict[str, Any]:
     if row:
         auction_outcome = dict(row)
         for key in ("actual_snapshot", "error_tags"):
-            try:
+            with suppress(Exception):
                 auction_outcome[key] = json.loads(auction_outcome[key] or "{}")
-            except Exception:
-                pass
 
     candidate_rows = conn.execute(
         """

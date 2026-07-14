@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RND_HOME = Path(os.getenv("TRADINGAGENTS_RND_DIR", Path.home() / ".tradingagents" / "rnd"))
 DB_PATH = Path(os.getenv("TRADINGAGENTS_RND_DB", RND_HOME / "alpha_rnd.sqlite3"))

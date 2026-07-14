@@ -1,4 +1,5 @@
 from tradingagents.agents.utils.agent_utils import (
+    get_decision_context_from_state,
     get_instrument_context_from_state,
     get_language_instruction,
 )
@@ -17,6 +18,7 @@ def create_bull_researcher(llm):
         fundamentals_report = state["fundamentals_report"]
         policy_report = state.get("policy_report", "")
         instrument_context = get_instrument_context_from_state(state)
+        decision_context = get_decision_context_from_state(state)
         asset_type = state.get("asset_type", "stock")
         target_label = "stock" if asset_type == "stock" else "asset"
         fundamentals_label = (
@@ -41,9 +43,10 @@ Social media sentiment report: {sentiment_report}
 Latest world affairs news: {news_report}
 {fundamentals_label}: {fundamentals_report}
 Policy & retail-discussion report (A-share policy catalysts + 雪球 retail crowding; may be empty for non-A-shares): {policy_report}
+{decision_context}
 Conversation history of the debate: {history}
 Last bear argument: {current_response}
-Use this information to deliver a compelling bull argument, refute the bear's concerns, and engage in a dynamic debate that demonstrates the strengths of the bull position.
+Separate verified facts from forecasts. Challenge the industry and company assumptions explicitly, and state what evidence would falsify the bull thesis. Use this information to deliver a compelling bull argument, refute the bear's concerns, and engage in a dynamic debate that demonstrates the strengths of the bull position.
 """ + get_language_instruction()
 
         response = llm.invoke(prompt)

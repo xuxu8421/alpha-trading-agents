@@ -50,6 +50,37 @@ def to_ak_symbol(ticker: str) -> str:
     return t
 
 
+def _canonical_a_share_ticker(code: str) -> str:
+    code = str(code).strip().zfill(6)
+    if code.startswith(("6", "9")):
+        return f"{code}.SS"
+    if code.startswith(("4", "8")):
+        return f"{code}.BJ"
+    return f"{code}.SZ"
+
+
+def _resolve_a_share_company_name(name: str, ak) -> str | None:
+    """Resolve exact Chinese short names; never fuzzy-match a security."""
+    if not re.search(r"[\u4e00-\u9fff]", name or ""):
+        return None
+    try:
+        table = ak.stock_info_a_code_name()
+    except Exception as exc:
+        raise NoMarketDataError(
+            name, detail=f"A-share company-name resolution failed: {exc}"
+        ) from exc
+    if table is None or table.empty:
+        return None
+    code_col = next((c for c in ("code", "证券代码", "股票代码") if c in table.columns), None)
+    name_col = next((c for c in ("name", "证券简称", "股票简称") if c in table.columns), None)
+    if code_col is None or name_col is None:
+        return None
+    exact = table[table[name_col].astype(str).str.strip() == str(name).strip()]
+    if exact.empty:
+        return None
+    return _canonical_a_share_ticker(exact.iloc[0][code_col])
+
+
 def get_ohlcv_akshare_frame(ticker: str, start_date: str, end_date: str) -> pd.DataFrame:
     """Return normalized A-share OHLCV from akshare as Date/Open/High/Low/Close/Volume.
 
@@ -233,8 +264,9 @@ def _tencent_quote(code: str) -> dict:
         "turnover_pct": _float_or_zero(vals[38]),
         "pe_ttm": _float_or_zero(vals[39]),
         "amplitude_pct": _float_or_zero(vals[43]),
-        "mcap_yi": _float_or_zero(vals[44]),
-        "float_mcap_yi": _float_or_zero(vals[45]),
+        # Tencent full quote layout: 44=流通市值, 45=总市值.
+        "mcap_yi": _float_or_zero(vals[45]),
+        "float_mcap_yi": _float_or_zero(vals[44]),
         "pb": _float_or_zero(vals[46]),
         "limit_up": _float_or_zero(vals[47]),
         "limit_down": _float_or_zero(vals[48]),
@@ -414,18 +446,22 @@ def get_news_akshare(ticker: str, start_date: str, end_date: str) -> str:
     Raises ``NoMarketDataError`` for non-A-share tickers so the router
     delegates to the next configured vendor.
     """
-    if not is_a_share(ticker):
-        raise NoMarketDataError(ticker, detail="not an A-share; akshare CN news skipped")
-
     ak = _ak()
-    code = to_ak_symbol(ticker)
+    canonical_ticker = ticker
+    if not is_a_share(canonical_ticker):
+        canonical_ticker = _resolve_a_share_company_name(ticker, ak) or ticker
+    if not is_a_share(canonical_ticker):
+        raise NoMarketDataError(ticker, detail="not an A-share; akshare CN news skipped")
+    code = to_ak_symbol(canonical_ticker)
     try:
         df = ak.stock_news_em(symbol=code)
     except Exception as e:  # network / interface drift -> let router decide
-        raise NoMarketDataError(ticker, code, f"akshare stock_news_em failed: {e}")
+        raise NoMarketDataError(
+            canonical_ticker, code, f"akshare stock_news_em failed: {e}"
+        ) from e
 
     if df is None or len(df) == 0:
-        return f"No A-share news found for {ticker} (东方财富/akshare)."
+        return f"No A-share news found for {canonical_ticker} (东方财富/akshare)."
 
     try:
         start_dt = datetime.strptime(start_date, "%Y-%m-%d")
@@ -442,19 +478,21 @@ def get_news_akshare(ticker: str, start_date: str, end_date: str) -> str:
         link = str(r.get("新闻链接", "")).strip()
         pub = _parse_dt(ts)
         # Look-ahead-safe window filter when both the item and window are dated.
-        if pub is not None and start_dt is not None:
-            if not (start_dt <= pub < end_dt):
-                continue
+        if pub is not None and start_dt is not None and not (start_dt <= pub < end_dt):
+            continue
         rows.append((pub, title, body, src, ts, link))
 
     if not rows:
         return (
-            f"No A-share news for {ticker} within {start_date}~{end_date} "
+            f"No A-share news for {canonical_ticker} within {start_date}~{end_date} "
             f"(东方财富 returned {len(df)} recent items, all outside the window)."
         )
 
     rows.sort(key=lambda x: (x[0] or datetime.min), reverse=True)
-    out = [f"## {ticker} 个股新闻（来源：东方财富 / akshare），{start_date} ~ {end_date}:\n"]
+    out = [
+        f"## {canonical_ticker} 个股新闻（来源：东方财富 / akshare），"
+        f"{start_date} ~ {end_date}:\n"
+    ]
     for _, title, body, src, ts, link in rows:
         out.append(f"### {title}  ({ts}, 来源: {src})")
         if body:
@@ -537,8 +575,14 @@ def _fund_flow_block(ak, code: str, ticker: str) -> str:
     """主力/超大单 net inflow trend over the last ~5 trading days (smart money)."""
     try:
         df = _retry(lambda: ak.stock_individual_fund_flow(stock=code, market=_market_of(ticker)))
-    except Exception as e:
-        return f"个股资金流获取失败：{e}"
+    except Exception as eastmoney_error:
+        try:
+            return _fund_flow_ths_block(ak, code, eastmoney_error)
+        except Exception as ths_error:
+            return (
+                "个股资金流获取失败："
+                f"东方财富={eastmoney_error}; 同花顺={ths_error}"
+            )
     if df is None or len(df) == 0:
         return "无个股资金流数据。"
     tail = df.tail(5)
@@ -570,6 +614,48 @@ def _fund_flow_block(ak, code: str, ticker: str) -> str:
         f"其中 {pos_days}/5 日主力净流入。"
     )
     return head + "\n" + "\n".join(lines)
+
+
+def _fund_flow_ths_block(ak, code: str, eastmoney_error: Exception) -> str:
+    """Independent same-horizon fallback when Eastmoney's host is unstable."""
+    immediate = _retry(lambda: ak.stock_fund_flow_individual(symbol="即时"), tries=3)
+    five_day = _retry(lambda: ak.stock_fund_flow_individual(symbol="5日排行"), tries=3)
+
+    def row_for(frame):
+        if frame is None or frame.empty:
+            return None
+        code_col = next(
+            (c for c in ("股票代码", "代码", "证券代码") if c in frame.columns),
+            None,
+        )
+        if code_col is None:
+            return None
+        rows = frame[frame[code_col].astype(str).str.zfill(6) == code]
+        return None if rows.empty else rows.iloc[0]
+
+    now_row = row_for(immediate)
+    five_row = row_for(five_day)
+    if now_row is None and five_row is None:
+        raise ValueError(f"同花顺排行中未找到 {code}")
+
+    def value(row, *names):
+        if row is None:
+            return "—"
+        for name in names:
+            if name in row and pd.notna(row[name]):
+                return row[name]
+        return "—"
+
+    return (
+        "个股资金流（同花顺独立备源；东方财富接口失败，保持即时+5日同期限）：\n"
+        f"- 即时：流入 {value(now_row, '流入资金', '资金流入')}，"
+        f"流出 {value(now_row, '流出资金', '资金流出')}，"
+        f"净额 {value(now_row, '净额', '资金流入净额')}\n"
+        f"- 5日：阶段涨跌幅 {value(five_row, '阶段涨跌幅')}，"
+        f"连续换手率 {value(five_row, '连续换手率')}，"
+        f"资金流入净额 {value(five_row, '资金流入净额', '净额')}\n"
+        f"- 来源切换原因：{type(eastmoney_error).__name__}"
+    )
 
 
 def _lhb_block(ak, code: str) -> str:

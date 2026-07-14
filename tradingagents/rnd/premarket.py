@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import requests
 
 from .config import RND_HOME
-
 
 PREMARKET_CACHE_PATH = RND_HOME / "premarket_snapshot.json"
 REQUEST_HEADERS = {

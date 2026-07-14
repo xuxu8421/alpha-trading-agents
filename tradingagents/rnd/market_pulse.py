@@ -8,7 +8,6 @@ from typing import Any
 
 import requests
 
-
 EASTMONEY_CLIST_URL = "https://push2.eastmoney.com/api/qt/clist/get"
 EASTMONEY_CLIST_BASE_PARAMS = {
     "pn": 1,

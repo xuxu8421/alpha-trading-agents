@@ -7,7 +7,6 @@ from typing import Any
 
 from .config import RND_HOME, ensure_dirs
 
-
 INTELLIGENCE_DIR = RND_HOME / "industry_intelligence"
 LATEST_PATH = INTELLIGENCE_DIR / "latest.json"
 
