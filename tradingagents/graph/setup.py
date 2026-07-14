@@ -11,6 +11,7 @@ from tradingagents.agents import (
     create_bull_researcher,
     create_conservative_debator,
     create_fundamentals_analyst,
+    create_financial_report_analyst,
     create_industry_analyst,
     create_market_analyst,
     create_msg_delete,
@@ -71,6 +72,9 @@ class GraphSetup:
         # non-A-share tickers, so the graph topology is identical across markets.
         policy_analyst_node = create_policy_analyst(self.quick_thinking_llm)
         industry_analyst_node = create_industry_analyst(self.quick_thinking_llm)
+        financial_report_analyst_node = create_financial_report_analyst(
+            self.deep_thinking_llm
+        )
 
         # Create researcher and manager nodes
         bull_researcher_node = create_bull_researcher(self.quick_thinking_llm)
@@ -99,6 +103,7 @@ class GraphSetup:
         # Add other nodes
         workflow.add_node("Policy Analyst", policy_analyst_node)
         workflow.add_node("Industry Analyst", industry_analyst_node)
+        workflow.add_node("Financial Report Analyst", financial_report_analyst_node)
         workflow.add_node("Bull Researcher", bull_researcher_node)
         workflow.add_node("Bear Researcher", bear_researcher_node)
         workflow.add_node("Research Manager", research_manager_node)
@@ -133,7 +138,9 @@ class GraphSetup:
             if i < len(plan.specs) - 1:
                 workflow.add_edge(current_clear, plan.specs[i + 1].agent_node)
             else:
-                workflow.add_edge(current_clear, "Bull Researcher")
+                workflow.add_edge(current_clear, "Financial Report Analyst")
+
+        workflow.add_edge("Financial Report Analyst", "Bull Researcher")
 
         # Add remaining edges
         workflow.add_conditional_edges(

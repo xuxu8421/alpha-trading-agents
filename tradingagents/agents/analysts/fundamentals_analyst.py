@@ -7,6 +7,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_income_statement,
     get_instrument_context_from_state,
     get_language_instruction,
+    get_research_context_from_state,
 )
 from tradingagents.dataflows.akshare_cn import is_a_share, get_segment_breakdown
 
@@ -46,7 +47,8 @@ def create_fundamentals_analyst(llm):
             + " Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."
             + " Use the available tools: `get_fundamentals` for comprehensive company analysis, `get_balance_sheet`, `get_cashflow`, and `get_income_statement` for specific financial statements."
             + segment_block
-            + get_language_instruction(),
+            + get_language_instruction()
+            + get_research_context_from_state(state)
         )
 
         prompt = ChatPromptTemplate.from_messages(

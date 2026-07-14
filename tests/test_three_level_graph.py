@@ -15,3 +15,5 @@ def test_graph_starts_with_macro_then_industry_before_selected_analysts():
     assert ("__start__", "Policy Analyst") in workflow.edges
     assert ("Policy Analyst", "Industry Analyst") in workflow.edges
     assert ("Industry Analyst", "Market Analyst") in workflow.edges
+    assert ("Msg Clear Market", "Financial Report Analyst") in workflow.edges
+    assert ("Financial Report Analyst", "Bull Researcher") in workflow.edges

@@ -34,6 +34,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_language_instruction,
     get_news,
+    get_research_context_from_state,
 )
 from tradingagents.agents.utils.structured import (
     bind_structured,
@@ -96,6 +97,8 @@ def create_sentiment_analyst(llm):
                 stocktwits_block=stocktwits_block,
                 reddit_block=reddit_block,
             )
+
+        system_message += get_research_context_from_state(state)
 
         prompt = ChatPromptTemplate.from_messages(
             [
