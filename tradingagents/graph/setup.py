@@ -11,6 +11,7 @@ from tradingagents.agents import (
     create_bull_researcher,
     create_conservative_debator,
     create_fundamentals_analyst,
+    create_industry_analyst,
     create_market_analyst,
     create_msg_delete,
     create_neutral_debator,
@@ -69,6 +70,7 @@ class GraphSetup:
         # inserted between the analyst chain and the researchers. It no-ops for
         # non-A-share tickers, so the graph topology is identical across markets.
         policy_analyst_node = create_policy_analyst(self.quick_thinking_llm)
+        industry_analyst_node = create_industry_analyst(self.quick_thinking_llm)
 
         # Create researcher and manager nodes
         bull_researcher_node = create_bull_researcher(self.quick_thinking_llm)
@@ -96,6 +98,7 @@ class GraphSetup:
 
         # Add other nodes
         workflow.add_node("Policy Analyst", policy_analyst_node)
+        workflow.add_node("Industry Analyst", industry_analyst_node)
         workflow.add_node("Bull Researcher", bull_researcher_node)
         workflow.add_node("Bear Researcher", bear_researcher_node)
         workflow.add_node("Research Manager", research_manager_node)
@@ -107,8 +110,10 @@ class GraphSetup:
         workflow.add_node("Report Writer", report_writer_node)
 
         # Define edges
-        # Start with the first analyst
-        workflow.add_edge(START, plan.specs[0].agent_node)
+        # The cognitive spine is macro/policy -> industry -> company specialists.
+        workflow.add_edge(START, "Policy Analyst")
+        workflow.add_edge("Policy Analyst", "Industry Analyst")
+        workflow.add_edge("Industry Analyst", plan.specs[0].agent_node)
 
         # Connect analysts in sequence
         for i, spec in enumerate(plan.specs):
@@ -124,15 +129,11 @@ class GraphSetup:
             )
             workflow.add_edge(current_tools, current_analyst)
 
-            # Connect to next analyst, or to the Policy Analyst (then Bull
-            # Researcher) if this is the last analyst in the chain.
+            # Connect to next analyst, or to the researchers if this is last.
             if i < len(plan.specs) - 1:
                 workflow.add_edge(current_clear, plan.specs[i + 1].agent_node)
             else:
-                workflow.add_edge(current_clear, "Policy Analyst")
-
-        # Policy Analyst runs after the analyst chain, before the researchers.
-        workflow.add_edge("Policy Analyst", "Bull Researcher")
+                workflow.add_edge(current_clear, "Bull Researcher")
 
         # Add remaining edges
         workflow.add_conditional_edges(

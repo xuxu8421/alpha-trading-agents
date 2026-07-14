@@ -34,7 +34,11 @@ def create_policy_analyst(llm):
                 f"Policy analysis is A-share-specific and was "
                 f"skipped for non-A-share ticker {ticker}."
             )
-            return {"messages": [AIMessage(content=note)], "policy_report": note}
+            return {
+                "messages": [AIMessage(content=note)],
+                "policy_report": note,
+                "macro_report": note,
+            }
 
         data = fetch_cn_policy(ticker)
         instrument_context = get_instrument_context_from_state(state)
@@ -66,6 +70,7 @@ def create_policy_analyst(llm):
         return {
             "messages": [AIMessage(content=report)],
             "policy_report": report,
+            "macro_report": report,
         }
 
     return policy_analyst_node
@@ -85,10 +90,12 @@ def _build_policy_system_message(*, ticker: str, end_date: str,
 
 ## How to analyze
 
-1. **Policy catalysts (tailwinds)**: identify any policy/regulatory/industrial support plausibly affecting this name or its sector — 产业政策、补贴、国产替代、信创、新质生产力、招标中标、纳入白名单/目录、地方专项、国家队增持. State direction and whether it's a confirmed event vs a rumor/narrative.
-2. **Policy risks (headwinds)**: 监管收紧、反垄断、出口管制、价格管制/降价、环保限产、税费、IPO/再融资/减持新规、退市风险.
-3. **Sector policy regime**: is the stock's sector currently in a policy tailwind, policy vacuum (无催化), or policy headwind? A 政策真空期 means price is driven by fundamentals/funds, not policy.
-4. **Be honest about limits**: company policy news is keyword-filtered and 财新 is market-wide macro; flag low-confidence reads. Do NOT invent policies.
+1. **国家/宏观环境**：先判断增长、流动性、信用、汇率、风险偏好和资本市场制度处于何种状态；信息不足必须标注。
+2. **Policy catalysts (tailwinds)**: identify any policy/regulatory/industrial support plausibly affecting this name or its sector — 产业政策、补贴、国产替代、信创、新质生产力、招标中标、纳入白名单/目录、地方专项、国家队增持. State direction and whether it's a confirmed event vs a rumor/narrative.
+3. **Policy risks (headwinds)**: 监管收紧、反垄断、出口管制、价格管制/降价、环保限产、税费、IPO/再融资/减持新规、退市风险.
+4. **传导链**：逐条写成“国家变量 → 行业供需/成本/估值 → 公司收入/利润/现金流”，禁止跳步。
+5. **期限与失效**：每项判断给出1周/1季/1年中的适用期限、置信度和可证伪条件。
+6. **Be honest about limits**: company policy news is keyword-filtered and 财新 is market-wide macro; flag low-confidence reads. Do NOT invent policies.
 
 ## Output
 
