@@ -14,7 +14,6 @@ import requests
 from .call_auction import _parse_tencent_quotes, _request_tencent
 from .config import STOCK_UNIVERSE
 
-
 INDEX_SYMBOLS = [
     {"ticker": "000001.SS", "name": "上证指数"},
     {"ticker": "399001.SZ", "name": "深证成指"},

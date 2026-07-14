@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 from __future__ import annotations
 
 import argparse
@@ -10,19 +11,24 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+# Environment loading intentionally precedes config imports.
 load_dotenv()
 
+from tradingagents.dataflows.akshare_cn import is_a_share
 from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.graph.trading_graph import TradingAgentsGraph
-from tradingagents.dataflows.akshare_cn import is_a_share
 
 from .call_auction import build_call_auction_brief, evaluate_call_auction_prediction
-from .config import DASHBOARD_PATH, HORIZONS, PROMPT_VERSION, STOCK_UNIVERSE, ticker_name
+from .config import HORIZONS, PROMPT_VERSION, STOCK_UNIVERSE, ticker_name
 from .daily_candidates import build_daily_candidates, update_candidate_strategy_weights
-from .data_auditor import build_data_quality_audit
 from .daily_review import build_daily_review
 from .dashboard import build_dashboard
-from .industry_intelligence import ingest_industry_intelligence, persist_industry_intelligence, seed_industry_intelligence
+from .data_auditor import build_data_quality_audit
+from .industry_intelligence import (
+    ingest_industry_intelligence,
+    persist_industry_intelligence,
+    seed_industry_intelligence,
+)
 from .market import evaluate_price_path, latest_a_share_trade_date, previous_weekday
 from .market_pulse import build_market_pulse
 from .optimizer import build_optimization_review

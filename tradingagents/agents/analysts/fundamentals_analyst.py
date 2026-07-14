@@ -9,7 +9,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_language_instruction,
     get_research_context_from_state,
 )
-from tradingagents.dataflows.akshare_cn import is_a_share, get_segment_breakdown
+from tradingagents.dataflows.akshare_cn import get_segment_breakdown, is_a_share
 
 
 def create_fundamentals_analyst(llm):

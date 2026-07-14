@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Breaking changes within the 0.x line are called out explicitly.
 
+## [Unreleased] — Alpha Agent V2
+
+### Added
+
+- Three-level research spine: macro/policy → industry → company, followed by an explicit expectation-gap stage.
+- Dedicated financial-report analyst with deterministic annual/quarterly statement inputs, falsification-first checks, longitudinal and peer comparison, and industry-specific accounting risks.
+- First-class state fields for macro, industry, financial, expectation, evidence-ledger, and position context; these reach every downstream decision role directly.
+- Decision-oriented report structure while retaining the existing `<!--META ...-->`, dashboard, and PDF rendering contracts.
+- Friday thesis snapshots and reviews with macro, industry, company, expectation, timing, and data verdicts plus evidence-gated improvement tasks.
+
+### Changed
+
+- Policy and industry nodes now run before the original specialist analyst chain.
+- Bull/Bear, research manager, trader, risk analysts, portfolio manager, and report writer receive the same source context instead of relying on lossy conversational summaries.
+- The weekly review distinguishes observed price/timing errors from causal thesis errors; unsupported causal attribution remains `unverified`.
+
+### Data limitations
+
+- Aggregated statement data is available, but stable page-level citations into original filing PDFs are not yet implemented. The financial agent must abstain on audit-note claims it cannot source.
+
 ## [0.3.0] — 2026-06-22
 
 Stabilization and extensibility release: a CI gate, a unified verified

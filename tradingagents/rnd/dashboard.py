@@ -7,18 +7,18 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from string import Template
 
+from tradingagents.dataflows.akshare_cn import _get_ohlcv_tencent_frame, get_ohlcv_akshare_frame
+
 from .call_auction import latest_call_auction_brief
 from .config import DASHBOARD_PATH, STOCK_UNIVERSE, ensure_dirs
 from .daily_candidates import latest_daily_candidates
-from .data_auditor import latest_data_quality_audit
 from .daily_review import latest_daily_review
+from .data_auditor import latest_data_quality_audit
 from .industry_chain import build_industry_chain_brief
 from .market_pulse import latest_market_pulse
 from .premarket import build_premarket_brief
 from .signals import extract_confidence, normalize_action, parse_report_meta
 from .storage import latest_dashboard_rows
-from tradingagents.dataflows.akshare_cn import _get_ohlcv_tencent_frame, get_ohlcv_akshare_frame
-
 
 ARCH_IMAGE = "assets/alpha_rnd_architecture_ai.png"
 
@@ -435,18 +435,18 @@ button.tiny{font-size:12px;padding:4px 7px}
   <div class="commandRow">
     <nav class="nav">
       <button class="active" data-tab="overview">今日决策</button>
-	      <button data-tab="candidates">每日候选</button>
-	      <button data-tab="pulse">市场脉搏</button>
-	      <button data-tab="premarket">盘前消息</button>
+      <button data-tab="candidates">每日候选</button>
+      <button data-tab="pulse">市场脉搏</button>
+      <button data-tab="premarket">盘前消息</button>
       <button data-tab="auction">集合竞价</button>
       <button data-tab="industry">产业链知识</button>
       <button data-tab="review">周五复盘</button>
       <button data-tab="pool">选股池</button>
     </nav>
-	    <div class="topActions">
-	      <button class="ghost" data-action="cadence">更新日历</button>
-	      <button class="ghost" data-action="data-audit">数据检查</button>
-	      <button class="ghost" data-action="architecture">系统架构</button>
+    <div class="topActions">
+      <button class="ghost" data-action="cadence">更新日历</button>
+      <button class="ghost" data-action="data-audit">数据检查</button>
+      <button class="ghost" data-action="architecture">系统架构</button>
       <button class="ghost" data-action="optimize">优化</button>
       <button data-action="render">刷新</button>
     </div>
@@ -986,10 +986,10 @@ document.addEventListener('click', function(e){
   if(action === 'quote') openQuote(btn.dataset.ticker || '', btn.dataset.name || '');
   if(action === 'track-pick'){ currentTrackId = btn.dataset.track || currentTrackId; currentIndustryView = 'map'; industryQuery = ''; renderIndustry(); }
   if(action === 'industry-view'){ currentIndustryView = btn.dataset.view || 'map'; industryQuery = ''; renderIndustry(); }
-	  if(action === 'chain-detail') openChainDetail(btn.dataset.ticker || '');
-	  if(action === 'architecture') openArchitecture();
-	  if(action === 'data-audit') openDataAudit();
-	  if(action === 'cadence') openCadence();
+  if(action === 'chain-detail') openChainDetail(btn.dataset.ticker || '');
+  if(action === 'architecture') openArchitecture();
+  if(action === 'data-audit') openDataAudit();
+  if(action === 'cadence') openCadence();
   if(action === 'optimize') openOptimize();
   if(action === 'pool-rules') openPoolRules();
   if(action === 'add-stock') openAddStock();

@@ -1,13 +1,14 @@
+from datetime import datetime
+
 from tradingagents.rnd.call_auction import (
     DEFAULT_RULE_WEIGHTS,
     REFERENCES,
     TIME_WINDOWS,
     _predict_market_from_snapshots,
-    _should_refresh_today_auction,
     _score_prediction,
+    _should_refresh_today_auction,
     _stock_feature,
 )
-from datetime import datetime
 
 
 def test_call_auction_brief_has_core_market_windows():

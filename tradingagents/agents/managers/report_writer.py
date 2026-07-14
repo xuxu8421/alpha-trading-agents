@@ -17,7 +17,6 @@ output rather than a stitcher of raw fragments.
 from langchain_core.messages import AIMessage
 
 from tradingagents.agents.utils.agent_utils import (
-    get_instrument_context_from_state,
     get_language_instruction,
 )
 
@@ -29,7 +28,6 @@ def create_report_writer(llm):
         ticker = state["company_of_interest"]
         date = state["trade_date"]
         ids = state.get("investment_debate_state", {})
-        rds = state.get("risk_debate_state", {})
 
         materials = f"""【标的】{ticker}　【分析日】{date}
 

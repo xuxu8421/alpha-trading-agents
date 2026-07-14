@@ -17,7 +17,6 @@ from tradingagents.agents.utils.agent_utils import (
 
 from .financial_reading_framework import financial_reading_framework
 
-
 STATEMENT_TOOLS = {
     "balance_sheet": get_balance_sheet,
     "income_statement": get_income_statement,

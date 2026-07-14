@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections.abc import Iterable
+from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 
@@ -509,10 +510,8 @@ def _latest_thesis_review_payload(conn: sqlite3.Connection) -> dict:
         return {}
     for row in rows:
         for key in ("attribution", "evidence"):
-            try:
+            with suppress(TypeError, ValueError):
                 row[key] = json.loads(row[key] or "{}")
-            except (TypeError, ValueError):
-                pass
     return {"review_date": rows[0]["review_date"], "reviews": rows}
 
 

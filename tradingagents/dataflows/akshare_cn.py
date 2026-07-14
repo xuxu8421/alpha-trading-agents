@@ -422,7 +422,9 @@ def get_news_akshare(ticker: str, start_date: str, end_date: str) -> str:
     try:
         df = ak.stock_news_em(symbol=code)
     except Exception as e:  # network / interface drift -> let router decide
-        raise NoMarketDataError(ticker, code, f"akshare stock_news_em failed: {e}")
+        raise NoMarketDataError(
+            ticker, code, f"akshare stock_news_em failed: {e}"
+        ) from e
 
     if df is None or len(df) == 0:
         return f"No A-share news found for {ticker} (东方财富/akshare)."
@@ -442,9 +444,8 @@ def get_news_akshare(ticker: str, start_date: str, end_date: str) -> str:
         link = str(r.get("新闻链接", "")).strip()
         pub = _parse_dt(ts)
         # Look-ahead-safe window filter when both the item and window are dated.
-        if pub is not None and start_dt is not None:
-            if not (start_dt <= pub < end_dt):
-                continue
+        if pub is not None and start_dt is not None and not (start_dt <= pub < end_dt):
+            continue
         rows.append((pub, title, body, src, ts, link))
 
     if not rows:

@@ -14,7 +14,6 @@ from .scoring import score_outcome
 from .storage import list_runs, upsert_outcome, upsert_score
 from .thesis_review import build_weekly_thesis_review
 
-
 CANDIDATE_HORIZONS = (1, 3, 5)
 MAX_FRESH_REPORT_EVALS = 6
 MAX_FRESH_CANDIDATE_EVALS = 8

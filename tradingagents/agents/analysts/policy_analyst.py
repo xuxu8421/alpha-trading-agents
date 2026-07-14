@@ -19,7 +19,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_language_instruction,
 )
-from tradingagents.dataflows.akshare_cn import is_a_share, fetch_cn_policy
+from tradingagents.dataflows.akshare_cn import fetch_cn_policy, is_a_share
 
 
 def create_policy_analyst(llm):

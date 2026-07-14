@@ -8,7 +8,6 @@ from typing import Any
 
 import requests
 
-
 REFERENCES = [
     {
         "name": "上交所交易规则 2026",

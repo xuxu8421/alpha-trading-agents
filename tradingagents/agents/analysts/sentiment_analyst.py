@@ -40,9 +40,9 @@ from tradingagents.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
+from tradingagents.dataflows.akshare_cn import fetch_cn_sentiment, is_a_share
 from tradingagents.dataflows.reddit import fetch_reddit_posts
 from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
-from tradingagents.dataflows.akshare_cn import is_a_share, fetch_cn_sentiment
 
 
 def _seven_days_back(trade_date: str) -> str:

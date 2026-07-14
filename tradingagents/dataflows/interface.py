@@ -1,5 +1,14 @@
 import logging
 
+from .akshare_cn import (
+    get_balance_sheet_akshare,
+    get_cashflow_akshare,
+    get_fundamentals_akshare,
+    get_global_news_akshare,
+    get_income_statement_akshare,
+    get_news_akshare,
+    get_stock_data_akshare,
+)
 from .alpha_vantage import (
     get_balance_sheet as get_alpha_vantage_balance_sheet,
     get_cashflow as get_alpha_vantage_cashflow,
@@ -29,15 +38,6 @@ from .y_finance import (
     get_YFin_data_online,
 )
 from .yfinance_news import get_global_news_yfinance, get_news_yfinance
-from .akshare_cn import (
-    get_balance_sheet_akshare,
-    get_cashflow_akshare,
-    get_fundamentals_akshare,
-    get_global_news_akshare,
-    get_income_statement_akshare,
-    get_news_akshare,
-    get_stock_data_akshare,
-)
 
 logger = logging.getLogger(__name__)
 
