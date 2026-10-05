@@ -1,8 +1,21 @@
-<h1 align="center">Alpha-TradingAgents · A股增强版</h1>
+<h1 align="center">Alpha-TradingAgents · A-share Research</h1>
+
+## English overview
+
+An extension of [TradingAgents](https://github.com/TauricResearch/TradingAgents) for A-share research. My additions include akshare data adapters with retry backoff, policy-analysis and report-writer nodes, and PDF rendering from structured report metadata. The analyst/debate framework is inherited from TradingAgents.
+
+- **Explore the implementation:** [data adapters](tradingagents/dataflows/akshare_cn.py), [policy analyst](tradingagents/agents/analysts/policy_analyst.py), [report writer](tradingagents/agents/managers/report_writer.py), and [PDF renderer](make_report_pdf.py).
+- **View an output without API keys:** [A-share sample report](samples/铂科新材_300811.SZ_研报样例.pdf) or the [project case study](https://sizhang-xu-portfolio.windy-sun-8382.chatgpt.site/alpha.html).
+- **Run locally:** the quickstart below covers Python 3.11, dependencies, and an LLM API key. PDF rendering also requires local Chrome; model and data-provider availability may affect live runs.
+
+This is a research and engineering demonstration, not a validated trading strategy. See [upstream documentation](README.upstream.md) and [license](LICENSE) for the original framework.
+
+---
+
 
 <p align="center">
   <b>面向中国 A 股 + 美股的多智能体（Multi-Agent LLM）投研系统</b><br>
-  在 <a href="https://github.com/TauricResearch/TradingAgents">TradingAgents</a> 框架之上，新增 <b>A 股专属信源</b>、<b>政策面分析师</b>、<b>报告整合官</b> 与 <b>机构级 PDF 研报生成</b>。
+  在 <a href="https://github.com/TauricResearch/TradingAgents">TradingAgents</a> 框架之上，新增 <b>A 股专属信源</b>、<b>政策面分析师</b>、<b>报告整合官</b> 与 <b>结构化 PDF 研报生成</b>。
 </p>
 
 <p align="center">
@@ -27,10 +40,10 @@
 |---|---|---|
 | 1 | **A 股信源接入层** (`tradingagents/dataflows/akshare_cn.py`) | 基于 `akshare` 接入东方财富 / 财新 / 雪球：个股新闻、全球财经快讯、**千股千评**量化情绪、**主力资金流**、**龙虎榜**、**券商研报评级**、**主营构成**（分产品/分地区营收与毛利）、**雪球散户讨论热度**、**财新政策快讯**。带指数退避重试，抵御接口抖动。 |
 | 2 | **政策面分析师**（新增图节点 `analysts/policy_analyst.py`） | A 股是「政策市」——单独引入一个分析师，专盯产业政策 / 监管信号 / 国产替代 / 招标补贴等催化与风险，结论并入多空辩论。 |
-| 3 | **报告整合官**（新增图节点 `managers/report_writer.py`） | 在组合经理决策之后，由一个「主编」Agent 把所有分析师产出、辩论、决策**重新组织成一篇连贯研报**：统一标题层级、去除 AI 内部独白、消除前后矛盾、表格适量。并输出一段隐藏 META 作为 PDF 卡片的唯一数据源，保证卡片与正文一致。 |
+| 3 | **报告整合官**（新增图节点 `managers/report_writer.py`） | 在组合经理决策之后，由一个「主编」Agent 把所有分析师产出、辩论、决策**重新组织成一篇连贯研报**：统一标题层级、去除 AI 内部独白、消除前后矛盾、表格适量。并输出一段隐藏 META 作为 PDF 卡片的共享数据源，减少重复维护造成的不一致；生成后仍需核查。 |
 | 4 | **A 股市场上下文注入** (`agents/utils/agent_utils.py`) | 把 A 股交易规则（涨跌停 / T+1 / 政策市 / 散户主导 / 限售解禁 / 股权质押 / ST 退市等）注入共享上下文，让**每个** Agent 都按 A 股逻辑推理，而非套用美股假设。 |
 | 5 | **信源路由与降级** (`run_demo.py` + `dataflows/interface.py`) | 自动识别 A 股代码（`600519.SS` / `300811.SZ` / 6 位纯数字），优先走 akshare，失败时回落 yfinance；美股则纯走 yfinance。 |
-| 6 | **机构级 PDF 研报生成** (`make_report_pdf.py`) | Goldman/中金风格版式（深蓝+金）：抬头 + 评级/操作/买入价/止损/目标价卡片 + 摘要 callout + 正文。按市场自动切换数据来源标注，控制在 4–5 页。 |
+| 6 | **结构化 PDF 研报生成** (`make_report_pdf.py`) | 深蓝与金色版式：抬头 + 评级/操作/买入价/止损/目标价卡片 + 摘要 callout + 正文。按市场自动切换数据来源标注，控制在 4–5 页。 |
 
 > 上游已有的多智能体框架、辩论机制、记忆/反思等能力均保留并复用。完整原始文档见 [README.upstream.md](README.upstream.md)。
 
@@ -61,7 +74,7 @@ cp .env.example .env
 python run_demo.py 300811.SZ 2026-06-24    # A 股：铂科新材
 python run_demo.py SPCX 2026-06-24         # 美股：SpaceX
 
-# 4. 生成机构级 PDF 研报（输出到桌面）
+# 4. 生成结构化 PDF 研报（输出到桌面）
 python make_report_pdf.py 300811.SZ
 ```
 
@@ -80,7 +93,7 @@ python make_report_pdf.py 300811.SZ
         │
    ▼ 报告整合官（新增，产出统一研报 + META）
         │
-   make_report_pdf.py ──► 机构级 PDF
+   make_report_pdf.py ──► 结构化 PDF
 ```
 
 ---
