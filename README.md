@@ -5,7 +5,7 @@
 An extension of [TradingAgents](https://github.com/TauricResearch/TradingAgents) for A-share research. My additions include akshare data adapters with retry backoff, policy-analysis and report-writer nodes, and PDF rendering from structured report metadata. The analyst/debate framework is inherited from TradingAgents.
 
 - **Explore the implementation:** [data adapters](tradingagents/dataflows/akshare_cn.py), [policy analyst](tradingagents/agents/analysts/policy_analyst.py), [report writer](tradingagents/agents/managers/report_writer.py), and [PDF renderer](make_report_pdf.py).
-- **View an output without API keys:** [A-share sample report](samples/铂科新材_300811.SZ_研报样例.pdf) or the [project case study](https://sizhang-xu-portfolio.windy-sun-8382.chatgpt.site/alpha.html).
+- **View an output without API keys:** [A-share sample report](samples/铂科新材_300811.SZ_研报样例.pdf) or the [project case study](https://xuxu8421.github.io/alpha.html).
 - **Run locally:** the quickstart below covers Python 3.11, dependencies, and an LLM API key. PDF rendering also requires local Chrome; model and data-provider availability may affect live runs.
 
 This is a research and engineering demonstration, not a validated trading strategy. See [upstream documentation](README.upstream.md) and [license](LICENSE) for the original framework.
